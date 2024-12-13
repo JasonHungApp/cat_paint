@@ -5,3 +5,6 @@
   Created by jasonhung on 2024/12/13.
   
 */
+
+"NSPhotoLibraryUsageDescription" = "此應用需要存取您的相簿以保存繪圖作品。";
+"NSPhotoLibraryAddUsageDescription" = "此應用需要存取您的相簿以保存繪圖作品。";

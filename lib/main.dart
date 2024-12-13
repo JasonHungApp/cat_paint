@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
-import 'dart:ui' as ui;
+import 'dart:ui' as ui; // 用於畫布轉為圖片
+import 'package:path_provider/path_provider.dart';
+import 'package:flutter/rendering.dart';  //RenderRepaintBoundary
+import 'dart:typed_data'; //ByteData
+import 'package:image/image.dart' as img;
+import 'package:gallery_saver/gallery_saver.dart';
+import 'dart:io';
+
 
 void main() {
   runApp(const CatPaintApp());
@@ -29,6 +36,7 @@ class CatPaintHomePage extends StatefulWidget {
 
 class _CatPaintHomePageState extends State<CatPaintHomePage> {
   final GlobalKey _paintKey = GlobalKey();
+  final GlobalKey _repaintKey = GlobalKey(); // 用於保存畫布
   List<Offset> _points = [];
   Color _selectedColor = Colors.black;
   double _inkLevel = 1.0; // 墨水初始為 100%
@@ -38,6 +46,12 @@ class _CatPaintHomePageState extends State<CatPaintHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ink And Cat Paint App'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save_alt),
+            onPressed: _saveCanvas, // 保存畫布
+          ),
+        ],
       ),
       body: Row(
         children: [
@@ -52,10 +66,13 @@ class _CatPaintHomePageState extends State<CatPaintHomePage> {
                 });
               },
               onPanEnd: (details) => _points.add(Offset.zero),
-              child: CustomPaint(
-                key: _paintKey,
-                size: Size.infinite,
-                painter: SketchPainter(_points, _selectedColor),
+              child: RepaintBoundary(
+                key: _repaintKey, // 繪圖區域加上 RepaintBoundary
+                child: CustomPaint(
+                  key: _paintKey,
+                  size: Size.infinite,
+                  painter: SketchPainter(_points, _selectedColor),
+                ),
               ),
             ),
           ),
@@ -64,6 +81,33 @@ class _CatPaintHomePageState extends State<CatPaintHomePage> {
       ),
       bottomNavigationBar: _buildToolBar(),
     );
+  }
+
+  Future<void> _saveCanvas() async {
+    try {
+      RenderRepaintBoundary boundary = _repaintKey.currentContext!
+          .findRenderObject() as RenderRepaintBoundary;
+      ui.Image image = await boundary.toImage(pixelRatio: 3.0);
+      ByteData? byteData =
+          await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) return;
+
+      // 獲取應用程式文件目錄
+      final directory = await getTemporaryDirectory();
+      final imagePath = '${directory.path}/canvas.png';
+      final file = File(imagePath);
+      await file.writeAsBytes(byteData.buffer.asUint8List());
+
+      // 保存到相冊
+      await GallerySaver.saveImage(imagePath);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('圖片已保存到相冊！')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('保存失敗：$e')),
+      );
+    }
   }
 
   Widget _buildToolBar() {
@@ -118,7 +162,7 @@ class _CatPaintHomePageState extends State<CatPaintHomePage> {
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
                   border: Border.all(color: Colors.black),
-                                    borderRadius:
+                  borderRadius:
                       const BorderRadius.vertical(bottom: Radius.circular(15)),
                 ),
                 child: Stack(

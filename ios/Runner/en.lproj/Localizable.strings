@@ -5,3 +5,6 @@
   Created by jasonhung on 2024/12/13.
   
 */
+
+"NSPhotoLibraryUsageDescription" = "This app requires access to your photo library to save your drawings.";
+"NSPhotoLibraryAddUsageDescription" = "This app requires access to your photo library to save your drawings.";
